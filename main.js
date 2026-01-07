@@ -3,14 +3,19 @@ import * as THREE from "three"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import * as MTP from "@dvt3d/maplibre-three-plugin"
 
+import { kml } from "@tmcw/togeojson"
+import JSZip from "jszip"
+
+
+
 // True size of this model ≈ 100m
 const maplibreBackground = import.meta.env.VITE_MAPLIBRE_BACKGROUND
 const turbineModel = import.meta.env.VITE_TURBINE_MODEL
-const modelHeight = import.meta.env.VITE_TURBINE_MODEL_HEIGHT
+const MODEL_HEIGHT = import.meta.env.VITE_TURBINE_MODEL_HEIGHT
 const defaultHeight = import.meta.env.VITE_DEFAULT_HEIGHT
 const defaultLon = import.meta.env.VITE_DEFAULT_LON
 const defaultLat = import.meta.env.VITE_DEFAULT_LAT
-
+const turbines = [] // { id, lon, lat, height, rtc }
 
 const map = new maplibregl.Map({
   container: "map",
@@ -46,20 +51,71 @@ loader.load(
   }
 )
 
+function updateList() {
+  const div = document.getElementById("list")
+  div.innerHTML = ""
+
+  turbines.forEach(t => {
+    const row = document.createElement("div")
+    row.style.display = "flex"
+    row.style.justifyContent = "space-between"
+
+    row.innerHTML = `
+      <span>${t.lon.toFixed(4)}, ${t.lat.toFixed(4)} (${t.height}m)</span>
+      <button style="width:10%;padding:5px">X</button>
+    `
+    row.querySelector("button").onclick = () => {
+      mapScene.removeObject(t.rtc)
+      turbines.splice(turbines.indexOf(t), 1)
+      updateList()
+      map.triggerRepaint()
+    }
+
+    div.appendChild(row)
+  })
+}
+
+
+let idCounter = 1
 
 function addTurbine(lon, lat, height) {
-  if (!turbineTemplate) return alert("Model still loading…")
-
   const turbine = turbineTemplate.clone(true)
-
-  const scale = height / modelHeight
-  turbine.scale.setScalar(scale)
+  turbine.scale.setScalar(height / MODEL_HEIGHT)
 
   const rtc = MTP.Creator.createRTCGroup([lon, lat])
   rtc.add(turbine)
-
   mapScene.addObject(rtc)
+
+  turbines.push({
+    id: idCounter++,
+    lon,
+    lat,
+    height,
+    rtc
+  })
+
+  updateList()
+  map.triggerRepaint()
 }
+
+
+let pickMode = false
+
+document.getElementById("pick").onclick = () => {
+  pickMode = true
+  alert('Select location on Map')
+}
+
+map.on("click", e => {
+  if (!pickMode) return
+  pickMode = false
+
+  const { lng, lat } = e.lngLat
+  document.getElementById("lon").value = lng
+  document.getElementById("lat").value = lat
+  alert('Coordinates updated')
+})
+
 
 // UI
 document.getElementById("add").onclick = () => {
@@ -79,3 +135,42 @@ document.getElementById("add").onclick = () => {
 }
 
 
+
+document.getElementById("export").onclick = async () => {
+  const kml = `
+  <kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+  ${turbines.map(t => `
+    <Placemark>
+      <name>${t.height}m turbine</name>
+      <Point>
+        <coordinates>${t.lon},${t.lat},0</coordinates>
+      </Point>
+    </Placemark>
+  `).join("")}
+  </Document>
+  </kml>`
+
+  const zip = new JSZip()
+  zip.file("doc.kml", kml)
+
+  const blob = await zip.generateAsync({ type: "blob" })
+  const a = document.createElement("a")
+  a.href = URL.createObjectURL(blob)
+  a.download = "turbines.kmz"
+  a.click()
+}
+
+document.getElementById("import").onchange = async e => {
+  const file = e.target.files[0]
+  const zip = await JSZip.loadAsync(file)
+  const text = await zip.file("doc.kml").async("string")
+
+  const xml = new DOMParser().parseFromString(text, "text/xml")
+  const geo = kml(xml)
+
+  geo.features.forEach(f => {
+    const [lon, lat] = f.geometry.coordinates
+    addTurbine(lon, lat, 240)
+  })
+}
