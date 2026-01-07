@@ -27,6 +27,8 @@ jobs:
       # 4️⃣ Build the Vite project
       - name: Build
         run: npm run build
+        env:
+          VITE_MAPLIBRE_BACKGROUND: ${{ vars.VITE_MAPLIBRE_BACKGROUND }}
 
       # 5️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
