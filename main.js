@@ -58,22 +58,45 @@ function updateList() {
   turbines.forEach(t => {
     const row = document.createElement("div")
     row.style.display = "flex"
+    row.style.alignItems = "center"
     row.style.justifyContent = "space-between"
+    row.style.marginBottom = "4px"
 
-    row.innerHTML = `
-      <span>${t.lon.toFixed(4)}, ${t.lat.toFixed(4)} (${t.height}m)</span>
-      <button style="width:10%;padding:5px">X</button>
-    `
-    row.querySelector("button").onclick = () => {
+    const label = document.createElement("span")
+    label.textContent = `${t.lon.toFixed(4)}, ${t.lat.toFixed(4)} (${t.height}m)`
+    label.style.flex = "1"
+
+    // 🔍 Zoom button
+    const zoomBtn = document.createElement("button")
+    zoomBtn.textContent = "🔍"
+    zoomBtn.title = "Zoom to turbine"
+    zoomBtn.style.marginRight = "4px"
+    zoomBtn.classList.add('mini')
+
+    zoomBtn.onclick = () => {
+      zoomToTurbine(t)
+    }
+
+    // ❌ Delete button
+    const delBtn = document.createElement("button")
+    delBtn.textContent = "❌"
+    delBtn.classList.add('mini')
+
+    delBtn.onclick = () => {
       mapScene.removeObject(t.rtc)
       turbines.splice(turbines.indexOf(t), 1)
       updateList()
       map.triggerRepaint()
     }
 
+    row.appendChild(label)
+    row.appendChild(zoomBtn)
+    row.appendChild(delBtn)
+
     div.appendChild(row)
   })
 }
+
 
 
 let idCounter = 1
@@ -103,7 +126,7 @@ let pickMode = false
 
 document.getElementById("pick").onclick = () => {
   pickMode = true
-  alert('Select location on Map')
+  document.getElementById("pick").classList.add('active')
 }
 
 map.on("click", e => {
@@ -113,9 +136,18 @@ map.on("click", e => {
   const { lng, lat } = e.lngLat
   document.getElementById("lon").value = lng
   document.getElementById("lat").value = lat
-  alert('Coordinates updated')
+  document.getElementById("pick").classList.remove('active')
 })
 
+function zoomToTurbine(t) {
+  map.easeTo({
+    center: [t.lon, t.lat],
+    zoom: 17,
+    pitch: 65,
+    bearing: 30,
+    duration: 1200
+  })
+}
 
 // UI
 document.getElementById("add").onclick = () => {
