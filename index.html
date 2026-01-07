@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Wind Turbine Map</title>
+
+<link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet"/>
+
+<style>
+html, body, #map {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>
+  <script type="module" crossorigin src="/turbine-mapper/assets/index-DIzDcjI4.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h3>Add Wind Turbine</h3>
+
+    <label>Longitude</label>
+    <input id="lon" type="number" step="0.000001" value="">
+
+    <label>Latitude</label>
+    <input id="lat" type="number" step="0.000001" value="">
+
+    <label>Height (m)</label>
+    <input id="height" type="number" value="">
+
+    <button id="add">Add Turbine</button>
+  </div>
+
+
+  <style>
+    #panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: white;
+      padding: 12px 14px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,.25);
+      font-family: sans-serif;
+      z-index: 10;
+      width: 220px;
+    }
+
+    #panel h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+    }
+
+    #panel label {
+      display: block;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    #panel input {
+      width: 100%;
+      padding: 5px;
+    }
+
+    #panel button {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</body>
+</html>
