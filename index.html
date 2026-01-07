@@ -14,7 +14,7 @@ html, body, #map {
   height: 100%;
 }
 </style>
-  <script type="module" crossorigin src="/turbine-mapper/assets/index-bT9iM-oe.js"></script>
+  <script type="module" crossorigin src="/turbine-mapper/assets/index-DvKEYvlY.js"></script>
 </head>
 <body>
   <div id="map"></div>
@@ -30,8 +30,21 @@ html, body, #map {
 
     <label>Height (m)</label>
     <input id="height" type="number" value="">
+    <div style="margin-top:10px;">
+      <button id="add">Add Turbine</button>
+      <button id="pick">Pick on map</button>
+    </div>
 
-    <button id="add">Add Turbine</button>
+    <h4>Locations</h4>
+    <div id="list"></div>
+
+    <hr>
+
+    <button id="export">Export KMZ</button>
+    <label class="custom-file-upload">
+    <input id="import" type="file" accept=".kmz"  /> Import KMZ
+    </label>
+
   </div>
 
 
@@ -66,16 +79,22 @@ html, body, #map {
       margin-left: -8px;
     }
 
-    #panel button {
+    #panel button, .custom-file-upload {
       margin-top: 10px;
-      width: 100%;
-      padding: 8px;
-      cursor: pointer;
+      width: 45%;
       background: #2563eb;
       color: white;
       border: none;
       border-radius: 5px;
+      display: inline-block;
+      padding: 6px 12px;
+      cursor: pointer;
     }
+
+    input[type="file"] {
+        display: none;
+    }
+
   </style>
 </body>
 </html>
