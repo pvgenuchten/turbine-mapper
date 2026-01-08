@@ -54,14 +54,15 @@ loader.load(
   turbineModel,
   gltf => {
     turbineTemplate = gltf.scene
-    document.getElementById("height").value = defaultHeight,
-    document.getElementById("lon").value = defaultLon,
+    document.getElementById("height").value = defaultHeight
+    document.getElementById("lon").value = defaultLon
     document.getElementById("lat").value = defaultLat
     // Compute bounding box
     const box = new THREE.Box3().setFromObject(turbineTemplate)
     const size = new THREE.Vector3()
     box.getSize(size)
     turbineModelHeight = size.y   // true model height in meters
+    console.log(turbineModelHeight)
   }
 )
 
@@ -120,6 +121,7 @@ function addTurbine(lon, lat, height) {
   const turbine = turbineTemplate.clone(true)
   const scale = height / turbineModelHeight
   turbine.scale.setScalar(scale)
+  turbine.position.y = height / 2
 
   const rtc = MTP.Creator.createRTCGroup([lon, lat])
   rtc.add(turbine)
