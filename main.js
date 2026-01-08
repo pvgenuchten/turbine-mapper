@@ -4,14 +4,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import * as MTP from "@dvt3d/maplibre-three-plugin"
 
 import { kml } from "@tmcw/togeojson"
-import JSZip from "jszip"
-
-
 
 // True size of this model ≈ 100m
 const maplibreBackground = import.meta.env.VITE_MAPLIBRE_BACKGROUND
 const turbineModel = import.meta.env.VITE_TURBINE_MODEL
-const MODEL_HEIGHT = import.meta.env.VITE_TURBINE_MODEL_HEIGHT
 const defaultHeight = import.meta.env.VITE_DEFAULT_HEIGHT
 const defaultLon = import.meta.env.VITE_DEFAULT_LON
 const defaultLat = import.meta.env.VITE_DEFAULT_LAT
@@ -28,6 +24,17 @@ const map = new maplibregl.Map({
   maxPitch: 85
 })
 
+let JSZipLib = null
+
+async function getJSZip() {
+  if (!JSZipLib) {
+    const mod = await import("jszip")
+    JSZipLib = mod.default
+  }
+  return JSZipLib
+}
+
+
 // Init MTP scene
 const mapScene = new MTP.MapScene(map)
 
@@ -39,17 +46,25 @@ mapScene.addLight(sun)
 
 // Load GLB once and reuse
 const loader = new GLTFLoader()
+
 let turbineTemplate = null
+let turbineModelHeight = 1
 
 loader.load(
   turbineModel,
   gltf => {
-    turbineTemplate = gltf.scene,
+    turbineTemplate = gltf.scene
     document.getElementById("height").value = defaultHeight,
     document.getElementById("lon").value = defaultLon,
     document.getElementById("lat").value = defaultLat
+    // Compute bounding box
+    const box = new THREE.Box3().setFromObject(turbineTemplate)
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    turbineModelHeight = size.y   // true model height in meters
   }
 )
+
 
 function updateList() {
   const div = document.getElementById("list")
@@ -103,7 +118,8 @@ let idCounter = 1
 
 function addTurbine(lon, lat, height) {
   const turbine = turbineTemplate.clone(true)
-  turbine.scale.setScalar(height / MODEL_HEIGHT)
+  const scale = height / turbineModelHeight
+  turbine.scale.setScalar(scale)
 
   const rtc = MTP.Creator.createRTCGroup([lon, lat])
   rtc.add(turbine)
@@ -169,21 +185,48 @@ document.getElementById("add").onclick = () => {
 
 
 document.getElementById("export").onclick = async () => {
+  await exportKMZ()
+}
+
+async function exportKMZ() {
+  const JSZip = await getJSZip()
+  const zip = new JSZip()
+
+  // Load the DAE (must be in your public/assets folder)
+  const dae = await fetch("./assets/wind_turbine.dae").then(r => r.arrayBuffer())
+  zip.file("models/wind_turbine.dae", dae)
+
   const kml = `
   <kml xmlns="http://www.opengis.net/kml/2.2">
-  <Document>
-  ${turbines.map(t => `
-    <Placemark>
-      <name>${t.height}m turbine</name>
-      <Point>
-        <coordinates>${t.lon},${t.lat},0</coordinates>
-      </Point>
-    </Placemark>
-  `).join("")}
-  </Document>
+    <Document>
+      ${turbines.map(t => {
+        const scale = t.height / turbineModelHeight
+        const baseOffset = t.height / 2
+        return `
+        <Placemark>
+          <name>${t.height}m Turbine</name>
+          <Model>
+            <altitudeMode>relativeToGround</altitudeMode>
+            <Location>
+              <longitude>${t.lon}</longitude>
+              <latitude>${t.lat}</latitude>
+              <altitude>${baseOffset}</altitude>
+            </Location>
+            <Scale>
+              <x>${scale}</x>
+              <y>${scale}</y>
+              <z>${scale}</z>
+            </Scale>
+            <Link>
+              <href>models/wind_turbine.dae</href>
+            </Link>
+          </Model>
+        </Placemark>
+        `
+      }).join("")}
+    </Document>
   </kml>`
 
-  const zip = new JSZip()
   zip.file("doc.kml", kml)
 
   const blob = await zip.generateAsync({ type: "blob" })
@@ -193,16 +236,40 @@ document.getElementById("export").onclick = async () => {
   a.click()
 }
 
+
 document.getElementById("import").onchange = async e => {
   const file = e.target.files[0]
+  const JSZip = await getJSZip()
   const zip = await JSZip.loadAsync(file)
-  const text = await zip.file("doc.kml").async("string")
+  // Find KML
+  const kmlFile = Object.keys(zip.files).find(n => n.endsWith(".kml"))
+  const kmlText = await zip.files[kmlFile].async("text")
+  parseKMLModels(kmlText)
+}
 
-  const xml = new DOMParser().parseFromString(text, "text/xml")
-  const geo = kml(xml)
+function parseKMLModels(kmlText) {
+  const xml = new DOMParser().parseFromString(kmlText, "text/xml")
 
-  geo.features.forEach(f => {
-    const [lon, lat] = f.geometry.coordinates
-    addTurbine(lon, lat, 240)
+  const models = [...xml.querySelectorAll("Model")]
+  var lastLoc = []
+  models.forEach(model => {
+    const lon = parseFloat(model.querySelector("longitude").textContent)
+    const lat = parseFloat(model.querySelector("latitude").textContent)
+    const alt = parseFloat(model.querySelector("altitude").textContent)
+
+    const sx = parseFloat(model.querySelector("Scale > x").textContent)
+    const sy = parseFloat(model.querySelector("Scale > y").textContent)
+    const sz = parseFloat(model.querySelector("Scale > z").textContent)
+    lastLoc = [lon, lat]
+    // We encoded scale using height
+    const height = sy * turbineModelHeight
+    addTurbine(lon, lat, height)
+  })
+  map.easeTo({
+    center: lastLoc,
+    zoom: 15,        // adjust zoom as needed
+    pitch: 65,       // adjust pitch for 3D view
+    bearing: 30,     // optional rotation
+    duration: 1500,  // milliseconds for smooth animation
   })
 }

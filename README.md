@@ -8,7 +8,11 @@ To prevent disappointments.
 
 Visit the tool at [github.io](https://pvgenuchten.github.io/turbine-mapper/).
 
-Tool uses maplibre and three js to display 3d models on a map background (on the shoulders of giants). You can deploy the tool on your github.io by cloning this repo.
+Save the locations as kmz-file and open in google earth pro for even better visual experience.
+
+Tool uses maplibre and three js to display 3d models on a map background. You can deploy the tool on your github.io by cloning this repo.
 
 ![A preview of the turbine mapper tool](./turbine-preview.png)
+
+
 
